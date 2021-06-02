@@ -1,0 +1,20 @@
+{
+    "project_name":       "bootloader",
+    "project_path":       "/home/magno/esp-idfBOX/esp-idf/components/bootloader/subproject",
+    "build_dir":          "/home/magno/Documents/github/BoxMuv/tests/deauth_softap/build/bootloader",
+    "config_file":        "/home/magno/Documents/github/BoxMuv/tests/deauth_softap/sdkconfig",
+    "config_defaults":    "",
+    "app_elf":            "bootloader.elf",
+    "app_bin":            "bootloader.bin",
+    "git_revision":       "v4.4-dev-479-g1067b2870",
+    "target":             "esp32",
+    "phy_data_partition": "",
+    "monitor_baud" :      "115200",
+    "monitor_toolprefix": "xtensa-esp32-elf-",
+    "config_environment" : {
+        "COMPONENT_KCONFIGS" : "/home/magno/esp-idfBOX/esp-idf/components/efuse/Kconfig;/home/magno/esp-idfBOX/esp-idf/components/esp32/Kconfig;/home/magno/esp-idfBOX/esp-idf/components/esp_common/Kconfig;/home/magno/esp-idfBOX/esp-idf/components/esp_hw_support/Kconfig;/home/magno/esp-idfBOX/esp-idf/components/esp_system/Kconfig;/home/magno/esp-idfBOX/esp-idf/components/log/Kconfig;/home/magno/esp-idfBOX/esp-idf/components/newlib/Kconfig;/home/magno/esp-idfBOX/esp-idf/components/spi_flash/Kconfig",
+        "COMPONENT_KCONFIGS_PROJBUILD" : "/home/magno/esp-idfBOX/esp-idf/components/bootloader/Kconfig.projbuild;/home/magno/esp-idfBOX/esp-idf/components/esp_rom/Kconfig.projbuild;/home/magno/esp-idfBOX/esp-idf/components/esptool_py/Kconfig.projbuild;/home/magno/esp-idfBOX/esp-idf/components/partition_table/Kconfig.projbuild"
+    },
+    "build_components" : [ "bootloader", "bootloader_support", "efuse", "esp32", "esp_common", "esp_hw_support", "esp_rom", "esp_system", "esptool_py", "hal", "log", "main", "micro-ecc", "newlib", "partition_table", "soc", "spi_flash", "xtensa", "" ],
+    "build_component_paths" : [ "/home/magno/esp-idfBOX/esp-idf/components/bootloader", "/home/magno/esp-idfBOX/esp-idf/components/bootloader_support", "/home/magno/esp-idfBOX/esp-idf/components/efuse", "/home/magno/esp-idfBOX/esp-idf/components/esp32", "/home/magno/esp-idfBOX/esp-idf/components/esp_common", "/home/magno/esp-idfBOX/esp-idf/components/esp_hw_support", "/home/magno/esp-idfBOX/esp-idf/components/esp_rom", "/home/magno/esp-idfBOX/esp-idf/components/esp_system", "/home/magno/esp-idfBOX/esp-idf/components/esptool_py", "/home/magno/esp-idfBOX/esp-idf/components/hal", "/home/magno/esp-idfBOX/esp-idf/components/log", "/home/magno/esp-idfBOX/esp-idf/components/bootloader/subproject/main", "/home/magno/esp-idfBOX/esp-idf/components/bootloader/subproject/components/micro-ecc", "/home/magno/esp-idfBOX/esp-idf/components/newlib", "/home/magno/esp-idfBOX/esp-idf/components/partition_table", "/home/magno/esp-idfBOX/esp-idf/components/soc", "/home/magno/esp-idfBOX/esp-idf/components/spi_flash", "/home/magno/esp-idfBOX/esp-idf/components/xtensa", "" ]
+}

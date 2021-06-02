@@ -1,0 +1,8 @@
+source "/home/magno/esp-idfBOX/esp-idf/components/efuse/Kconfig"
+source "/home/magno/esp-idfBOX/esp-idf/components/esp32/Kconfig"
+source "/home/magno/esp-idfBOX/esp-idf/components/esp_common/Kconfig"
+source "/home/magno/esp-idfBOX/esp-idf/components/esp_hw_support/Kconfig"
+source "/home/magno/esp-idfBOX/esp-idf/components/esp_system/Kconfig"
+source "/home/magno/esp-idfBOX/esp-idf/components/log/Kconfig"
+source "/home/magno/esp-idfBOX/esp-idf/components/newlib/Kconfig"
+source "/home/magno/esp-idfBOX/esp-idf/components/spi_flash/Kconfig"
