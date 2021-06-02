@@ -68,4 +68,5 @@ $<TARGET_FILE:__idf_openssl>
 $<TARGET_FILE:__idf_spiffs>
 $<TARGET_FILE:__idf_ulp>
 $<TARGET_FILE:__idf_wifi_provisioning>
+$<TARGET_FILE:__idf_cmd_system>
 $<TARGET_FILE:__idf_main>

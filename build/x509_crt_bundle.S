@@ -1,4 +1,4 @@
-/* * Data converted from /home/magno/Documents/github/BoxMuv/tests/deauth_softap/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

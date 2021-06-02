@@ -6,7 +6,7 @@
 # It is included in the main 'build.ninja'.
 
 # =============================================================================
-# Project: wifi_softAP
+# Project: test_suite
 # Configuration: 
 # =============================================================================
 # =============================================================================
@@ -22,7 +22,7 @@ rule CUSTOM_COMMAND
 #############################################
 # Rule for compiling C files.
 
-rule C_COMPILER__wifi_softAP.2eelf
+rule C_COMPILER__test_suite.2eelf
   depfile = $DEP_FILE
   deps = gcc
   command = /home/magno/.espressif/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out   -c $in
@@ -32,7 +32,7 @@ rule C_COMPILER__wifi_softAP.2eelf
 #############################################
 # Rule for linking CXX executable.
 
-rule CXX_EXECUTABLE_LINKER__wifi_softAP.2eelf
+rule CXX_EXECUTABLE_LINKER__test_suite.2eelf
   command = $PRE_LINK && /home/magno/.espressif/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-g++  $FLAGS  $LINK_FLAGS $in  -o $TARGET_FILE $LINK_PATH $LINK_LIBRARIES && $POST_BUILD
   description = Linking CXX executable $TARGET_FILE
   restat = $RESTAT
@@ -1478,6 +1478,25 @@ rule C_STATIC_LIBRARY_LINKER____idf_wifi_provisioning
 #############################################
 # Rule for compiling C files.
 
+rule C_COMPILER____idf_cmd_system
+  depfile = $DEP_FILE
+  deps = gcc
+  command = /home/magno/.espressif/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc $DEFINES $INCLUDES $FLAGS -MD -MT $out -MF $DEP_FILE -o $out   -c $in
+  description = Building C object $out
+
+
+#############################################
+# Rule for linking C static library.
+
+rule C_STATIC_LIBRARY_LINKER____idf_cmd_system
+  command = $PRE_LINK && /home/magno/.espressif/tools/cmake/3.16.4/bin/cmake -E remove $TARGET_FILE && /home/magno/.espressif/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-ar qc $TARGET_FILE $LINK_FLAGS $in && /home/magno/.espressif/tools/xtensa-esp32-elf/esp-2020r3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-ranlib $TARGET_FILE && $POST_BUILD
+  description = Linking C static library $TARGET_FILE
+  restat = $RESTAT
+
+
+#############################################
+# Rule for compiling C files.
+
 rule C_COMPILER____idf_main
   depfile = $DEP_FILE
   deps = gcc
@@ -1498,7 +1517,7 @@ rule C_STATIC_LIBRARY_LINKER____idf_main
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /home/magno/.espressif/tools/cmake/3.16.4/bin/cmake -S/home/magno/Documents/github/BoxMuv/tests/deauth_softap -B/home/magno/Documents/github/BoxMuv/tests/deauth_softap/build
+  command = /home/magno/.espressif/tools/cmake/3.16.4/bin/cmake -S/home/magno/Documents/github/SoftAP_TestSuite -B/home/magno/Documents/github/SoftAP_TestSuite/build
   description = Re-running CMake...
   generator = 1
 

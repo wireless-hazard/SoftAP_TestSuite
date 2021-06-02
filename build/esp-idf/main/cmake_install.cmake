@@ -1,4 +1,4 @@
-# Install script for directory: /home/magno/Documents/github/BoxMuv/tests/deauth_softap/main
+# Install script for directory: /home/magno/Documents/github/SoftAP_TestSuite/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
