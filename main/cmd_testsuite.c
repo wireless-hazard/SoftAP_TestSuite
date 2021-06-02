@@ -43,6 +43,7 @@
 #define EXAMPLE_MAX_STA_CONN       CONFIG_ESP_MAX_STA_CONN
 
 static const char *TAG = "cmd_testsuite";
+static const char system_info_command[] = "{\"command\": \"system_info\"}";
 
 static bool soft_ap_on = false;
 static int sockfd = -1;
@@ -52,6 +53,8 @@ static void register_clear(void);
 static void register_turn_wifi_off(void);
 static void register_socket(void);
 static void register_socket_close(void);
+static void register_connect_socket(void);
+static void register_send_system_info(void);
 
 void register_testsuite(void){
 	register_startap();
@@ -59,6 +62,8 @@ void register_testsuite(void){
 	register_turn_wifi_off();
 	register_socket();
 	register_socket_close();
+    register_connect_socket();
+    register_send_system_info();
 }
 
 
@@ -71,8 +76,14 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                  MAC2STR(event->mac), event->aid);
     } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" leave, AID=%d",
+        ESP_LOGW(TAG, "station "MACSTR" leave, AID=%d",
                  MAC2STR(event->mac), event->aid);
+        if (sockfd != -1){
+            sockfd = -1;
+            ESP_LOGW(TAG, "Shutting down socket");
+            shutdown(sockfd, 0);
+            close(sockfd);
+        }
     }
 }
 
@@ -230,4 +241,113 @@ static void register_socket_close(void){
 		.func = &close_socket,
 	};
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));	
+}
+
+static struct {
+    struct arg_str *ip;
+    struct arg_end *end;
+} connect_args;
+
+static int connect_socket(int argc, char **argv){
+
+    connect_args.ip->sval[0] = "";
+
+    if (sockfd == -1) {
+        ESP_LOGE(TAG,"socket isn't open!!\n");
+        return ESP_OK;
+    }
+
+    int nerrors = arg_parse(argc, argv, (void **) &connect_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, connect_args.end, argv[0]);
+        return ESP_OK;
+    }
+    struct sockaddr_in dest_addr;
+    bzero(&dest_addr, sizeof(dest_addr));
+  
+    // assign IP, PORT
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_addr.s_addr = inet_addr(connect_args.ip->sval[0]);
+    dest_addr.sin_port = htons(8001);
+
+    
+    if (connect(sockfd, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) != 0) {
+        ESP_LOGE(TAG,"Connection with the server failed...\n");
+        return ESP_OK;
+    }
+    else
+        ESP_LOGI(TAG,"Connected to the server: %s\n",connect_args.ip->sval[0]);
+
+    return ESP_OK;
+}
+
+static void register_connect_socket(void){
+    connect_args.ip = arg_str1(NULL, NULL, "<ip>", "ip of the socket server to connect to");
+    connect_args.end = arg_end(0);
+    const esp_console_cmd_t cmd = {
+        .command = "socket_connect",
+        .help = "connect to a server socket",
+        .hint = NULL,
+        .func = &connect_socket,
+        .argtable = &connect_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
+}
+
+static struct {
+    struct arg_int *message;
+    struct arg_end *end;
+} system_info_args;
+
+static int send_system_info(int argc, char **argv){
+
+    char packet[1024] = {0,};
+
+    if (sockfd == -1) {
+        ESP_LOGE(TAG,"socket isn't open!!\n");
+        return ESP_OK;
+    }
+
+    int nerrors = arg_parse(argc, argv, (void **) &system_info_args);
+
+    if (nerrors != 0) {
+        arg_print_errors(stderr, system_info_args.end, argv[0]);
+        return ESP_OK;
+    }
+
+    int err;
+    switch (system_info_args.message->ival[0]){
+        case 0:
+            err = send(sockfd,&system_info_command,sizeof(system_info_command),0);
+            if (err < 0){
+                ESP_LOGE(TAG,"System info JSON not sent!! Error: %s",strerror(errno));
+                return ESP_OK;
+            }else{
+                ESP_LOGI(TAG,"System info JSON sent!!");
+            }
+        break;
+        default:
+            ESP_LOGE(TAG,"INVALID CHOICE!!!");
+            return ESP_OK;
+    }
+    err = recv(sockfd,packet,sizeof(packet),0);
+    if (err < 0){
+        ESP_LOGE(TAG,"Nothing received back from the socket server!!");
+        return ESP_OK;
+    }
+    ESP_LOGW(TAG,"\n%s\n",packet);
+    return ESP_OK;
+}
+
+static void register_send_system_info(void){
+    system_info_args.message = arg_int1("c", "command", "<int>", "which command to use");
+    system_info_args.end = arg_end(0);
+    const esp_console_cmd_t cmd = {
+        .command = "socket_send",
+        .help = "send command to socket",
+        .hint = NULL,
+        .func = &send_system_info,
+        .argtable = &system_info_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
 }
