@@ -68,5 +68,4 @@
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/spiffs/libspiffs.a
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/ulp/libulp.a
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
-/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/libcmd_system.a
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/main/libmain.a

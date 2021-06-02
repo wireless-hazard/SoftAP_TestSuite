@@ -626,13 +626,6 @@
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/wifi_provisioning/CMakeFiles/edit_cache.dir
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/wifi_provisioning/CMakeFiles/install.dir
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/wifi_provisioning/CMakeFiles/list_install_components.dir
-/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/CMakeFiles/install/strip.dir
-/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/CMakeFiles/install/local.dir
-/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/CMakeFiles/__idf_cmd_system.dir
-/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/CMakeFiles/edit_cache.dir
-/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/CMakeFiles/rebuild_cache.dir
-/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/CMakeFiles/install.dir
-/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/CMakeFiles/list_install_components.dir
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/main/CMakeFiles/install/strip.dir
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/main/CMakeFiles/install/local.dir
 /home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/main/CMakeFiles/edit_cache.dir

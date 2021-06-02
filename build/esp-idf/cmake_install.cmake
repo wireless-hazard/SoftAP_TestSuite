@@ -111,7 +111,6 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/tinyusb/cmake_install.cmake")
   include("/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/ulp/cmake_install.cmake")
   include("/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/wifi_provisioning/cmake_install.cmake")
-  include("/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/cmd_system/cmake_install.cmake")
   include("/home/magno/Documents/github/SoftAP_TestSuite/build/esp-idf/main/cmake_install.cmake")
 
 endif()

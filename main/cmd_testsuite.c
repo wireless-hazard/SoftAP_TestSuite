@@ -22,7 +22,6 @@
 #include "argtable3/argtable3.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "cmd_system.h"
 #include "sdkconfig.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -30,7 +29,9 @@
 #include "nvs_flash.h"
 #include "cmd_testsuite.h"
 #include "lwip/err.h"
+#include "lwip/sockets.h"
 #include "lwip/sys.h"
+#include <lwip/netdb.h>
 /* The examples use WiFi configuration that you can set via project configuration menu.
 
    If you'd rather not, just change the below entries to strings with
@@ -44,13 +45,20 @@
 static const char *TAG = "cmd_testsuite";
 
 static bool soft_ap_on = false;
+static int sockfd = -1;
 
 static void register_startap(void);
 static void register_clear(void);
+static void register_turn_wifi_off(void);
+static void register_socket(void);
+static void register_socket_close(void);
 
 void register_testsuite(void){
 	register_startap();
 	register_clear();
+	register_turn_wifi_off();
+	register_socket();
+	register_socket_close();
 }
 
 
@@ -68,12 +76,8 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-static int wifi_init_softap(int argc, char **argv){
+static void wifi_init_softap(void){
 
-	if(soft_ap_on){
-		ESP_LOGI(TAG,"Acess Point already running!!");
-		return ESP_OK;
-	}
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_ap();
@@ -103,12 +107,21 @@ static int wifi_init_softap(int argc, char **argv){
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    
+}
+
+static int startap(int argc, char **argv){
+	if(soft_ap_on){
+		ESP_LOGW(TAG,"Access Point already on!!");
+		return ESP_OK;
+	}
+	ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d",
              EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
     soft_ap_on = true;
     return ESP_OK;
+
 }
 
 static void register_startap(void){
@@ -116,8 +129,9 @@ static void register_startap(void){
         .command = "softap_start",
         .help = "Start the Access Point",
         .hint = NULL,
-        .func = &wifi_init_softap,
+        .func = &startap,
     };
+    wifi_init_softap();
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
@@ -134,4 +148,86 @@ static void register_clear(void){
 		.func = &clear_screen,
 	};
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+static int turn_wifi_off(int argc, char **argv){
+	if(!soft_ap_on){
+		ESP_LOGW(TAG,"Access Point already off!!");
+		return ESP_OK;
+	}
+	soft_ap_on = false;
+	esp_wifi_deauth_sta(0);
+    esp_wifi_stop();
+    return ESP_OK;
+}
+
+static void register_turn_wifi_off(void){
+	const esp_console_cmd_t cmd = {
+		.command = "softap_stop",
+		.help = "Stop the Access Point",
+		.hint = NULL,
+		.func = &turn_wifi_off,
+	};
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+}
+
+static int open_socket(int argc, char **argv){
+	if (!soft_ap_on){
+		ESP_LOGE(TAG,"Access Point turned off!!");
+		if(sockfd != -1){
+			ESP_LOGE(TAG, "Shutting down socket");
+            shutdown(sockfd, 0);
+            close(sockfd);
+            sockfd = -1;
+        }
+		return ESP_OK;
+	}else if(sockfd != -1){
+		ESP_LOGW(TAG,"Socket already open!");
+		return ESP_OK;
+	}
+    // socket create and varification
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        ESP_LOGE(TAG,"socket creation failed...\n");
+		return ESP_OK;
+    }
+    else{
+        ESP_LOGI(TAG,"Socket successfully created..\n");
+
+    }
+    return ESP_OK;
+}
+
+static void register_socket(void){
+	const esp_console_cmd_t cmd = {
+		.command = "socket_open",
+		.help = "open a client socket",
+		.hint = NULL,
+		.func = &open_socket,
+	};
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
+}
+
+static int close_socket(int argc, char **argv){
+	if(sockfd != -1){
+		ESP_LOGI(TAG, "Shutting down socket");
+        shutdown(sockfd, 0);
+        close(sockfd);
+        sockfd = -1;
+		return ESP_OK;
+
+    }else{ 
+    	ESP_LOGE(TAG,"Socket already closed!");
+		return ESP_OK;
+	}
+}
+
+static void register_socket_close(void){
+	const esp_console_cmd_t cmd = {
+		.command = "socket_close",
+		.help = "close a client socket",
+		.hint = NULL,
+		.func = &close_socket,
+	};
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));	
 }
