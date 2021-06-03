@@ -44,6 +44,10 @@
 #define EXAMPLE_MAX_STA_CONN       CONFIG_ESP_MAX_STA_CONN
 
 static const char *TAG = "cmd_testsuite";
+
+static const char restart_command[] = "{\"command\": \"restart\"}";
+static const char reset_command[] = "{\"command\": \"reset\"}";
+static const char stop_command[] = "{\"command\": \"stop_transmission\"}";
 static const char system_info_command[] = "{\"command\": \"system_info\"}";
 static const char init_transmissionBEGIN[] = "{\"command\": \"start_sensor\",\"freq\": ";
 static const char init_transmissionEND[] = ",\"GYRO\": 1,\"ACCEL\": 1}";
@@ -52,6 +56,7 @@ static const char stop_transmission[] = "{\"command\": \"stop_transmission\"}";
 static bool soft_ap_on = false;
 static bool streaming = false;
 static bool sending_on = false;
+static bool generic_buffer = false;
 static int sockfd = -1;
 
 static void register_startap(void);
@@ -62,6 +67,7 @@ static void register_socket_close(void);
 static void register_connect_socket(void);
 static void register_send_system_info(void);
 static void register_receive_stream_pckt(void);
+static void register_generic_receiver(void);
 
 void register_testsuite(void){
 	register_startap();
@@ -72,6 +78,7 @@ void register_testsuite(void){
     register_connect_socket();
     register_send_system_info();
     register_receive_stream_pckt();
+    register_generic_receiver();
 }
 
 
@@ -86,13 +93,6 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
         ESP_LOGW(TAG, "station "MACSTR" leave, AID=%d",
                  MAC2STR(event->mac), event->aid);
-        if (sockfd != -1){
-            sockfd = -1;
-            streaming = false;
-            ESP_LOGW(TAG, "Shutting down socket");
-            shutdown(sockfd, 0);
-            close(sockfd);
-        }
     }
 }
 
@@ -178,6 +178,14 @@ static int turn_wifi_off(int argc, char **argv){
 	soft_ap_on = false;
 	esp_wifi_deauth_sta(0);
     esp_wifi_stop();
+    
+    sockfd = -1;
+    streaming = false;
+    generic_buffer = false;
+    ESP_LOGW(TAG, "Shutting down socket");
+    shutdown(sockfd, 0);
+    close(sockfd);
+    
     return ESP_OK;
 }
 
@@ -297,7 +305,7 @@ static void register_connect_socket(void){
     connect_args.ip = arg_str1(NULL, NULL, "<ip>", "ip of the socket server to connect to");
     connect_args.end = arg_end(0);
     const esp_console_cmd_t cmd = {
-        .command = "socket_connect",
+        .command = "connect_to",
         .help = "connect to a server socket",
         .hint = NULL,
         .func = &connect_socket,
@@ -306,16 +314,18 @@ static void register_connect_socket(void){
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
 }
 
+enum which_message{info,stop,restart,reset};
+
 static struct {
     struct arg_int *message;
     struct arg_end *end;
 } system_info_args;
 
 static void task_send_system_info(void *pvParameters){
-    char packet[1024] = {0,};
+
     int err;
     switch (system_info_args.message->ival[0]){
-        case 0:
+        case info:
             err = send(sockfd,&system_info_command,sizeof(system_info_command),0);
             if (err < 0){
                 ESP_LOGE(TAG,"System info JSON not sent!! Error: %s",strerror(errno));
@@ -325,18 +335,42 @@ static void task_send_system_info(void *pvParameters){
                 ESP_LOGI(TAG,"System info JSON sent!!");
             }
         break;
+        case restart:
+            err = send(sockfd,&restart_command,sizeof(restart_command),0);
+            if (err < 0){
+                ESP_LOGE(TAG,"Restart command JSON not sent!! Error: %s",strerror(errno));
+                sending_on = false;
+                vTaskDelete(NULL);
+            }else{
+                ESP_LOGI(TAG,"Restart command JSON sent!!");
+            }
+        break;
+        case reset:
+            err = send(sockfd,&reset_command,sizeof(reset_command),0);
+            if (err < 0){
+                ESP_LOGE(TAG,"Reset command JSON not sent!! Error: %s",strerror(errno));
+                sending_on = false;
+                vTaskDelete(NULL);
+            }else{
+                ESP_LOGI(TAG,"Reset command JSON sent!!");
+            }
+        break;
+        case stop:
+            err = send(sockfd,&stop_command,sizeof(stop_command),0);
+            if (err < 0){
+                ESP_LOGE(TAG,"Stop command JSON not sent!! Error: %s",strerror(errno));
+                sending_on = false;
+                vTaskDelete(NULL);
+            }else{
+                ESP_LOGI(TAG,"Stop command JSON sent!!");
+                streaming = false;
+            }
+        break;
         default:
             ESP_LOGE(TAG,"INVALID CHOICE!!!");
             sending_on = false;
             vTaskDelete(NULL);
     }
-    err = recv(sockfd,packet,sizeof(packet),0);
-    if (err < 0){
-        ESP_LOGE(TAG,"Nothing received back from the socket server!!");
-        sending_on = false;
-        vTaskDelete(NULL);
-    }
-    ESP_LOGW(TAG,"\n%s\n",packet);
     sending_on = false;
     vTaskDelete(NULL);
 
@@ -433,6 +467,11 @@ static void task_stream_pckts(void *pvParameters){
         for(int i = 0; i < limit_of_packets;i++){
         
             total_pacotes++;
+            if(!streaming){
+                ESP_LOGI(TAG,"(%d/%d)Frequencia Media(%lld pacotes) = %f Hz (esperado: %dHz)\n",j+1,rounds,total_pacotes,media_freq/total_pacotes,sensor_frequency);
+                ESP_LOGW(TAG,"Number of corrupted packets: %llu\n",corrompido);
+                vTaskDelete(NULL);
+            }
             err = recv(sockfd,packet,sizeof(packet),0);
             if (err < 0){
                 ESP_LOGE(TAG,"error no socket\n");
@@ -468,7 +507,7 @@ static void task_stream_pckts(void *pvParameters){
 
             media_freq += frequencia;
         }
-        ESP_LOGI(TAG,"(%d/%d)Frequencia Media(%lld pacotes) = %f Hz (esperado: %dHz)\n",j+1,rounds,total_pacotes,media_freq/limit_of_packets,sensor_frequency);
+        ESP_LOGI(TAG,"(%d/%d)Frequencia Media(%lld pacotes) = %f Hz (esperado: %dHz)\n",j+1,rounds,total_pacotes,media_freq/total_pacotes,sensor_frequency);
         ESP_LOGW(TAG,"Number of corrupted packets: %llu\n",corrompido);
         err = send(sockfd,&stop_transmission,sizeof(stop_transmission),0);//MSG_DONTWAIT);
         if (err < 0){ 
@@ -481,7 +520,7 @@ static void task_stream_pckts(void *pvParameters){
 }
 
 static int receive_stream_pckt(int argc, char **argv){
-    if ((sockfd > 0) && (!streaming)){
+    if ((sockfd > 0) && (!streaming) && (!generic_buffer)){
         int nerrors = arg_parse(argc, argv, (void **) &packet_stream_args);
 
         if (nerrors != 0) {
@@ -505,7 +544,7 @@ static int receive_stream_pckt(int argc, char **argv){
         streaming = true;
         return ESP_OK;
     }
-    if (streaming){
+    if ((streaming) || (generic_buffer)){
         ESP_LOGW(TAG,"Stream still ongoing!!");
     }else{
         ESP_LOGE(TAG,"Socket is not open!!");
@@ -519,11 +558,55 @@ static void register_receive_stream_pckt(void){
     packet_stream_args.rounds = arg_int1("r","rounds","<int>","number of sequential transmissions of \'c\' packets");
     packet_stream_args.end = arg_end(0);
     const esp_console_cmd_t cmd = {
-        .command = "socket_recv",
-        .help = "receive packets from socket",
+        .command = "recv_sensor",
+        .help = "receive fixed amount of packets from sensor",
         .hint = NULL,
         .func = &receive_stream_pckt,
         .argtable = &packet_stream_args
+    };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
+}
+
+static void task_generic_receiver(void *pvParameters){
+    uint8_t packet[1024] = {0,};
+    int err;
+    while(true){
+        err = recv(sockfd,packet,sizeof(packet),0);
+        if (err < 0){
+            ESP_LOGE(TAG,"error no socket: %s",strerror(errno));
+            generic_buffer = false;
+            break;
+        }
+        if(!generic_buffer){
+            ESP_LOGW(TAG,"generic_receiver is being closed");
+            vTaskDelete(NULL);
+        }
+        ESP_LOGW(TAG,"%s\n",packet);
+    }
+    ESP_LOGE(TAG,"Receiver is being closed!!");
+    vTaskDelete(NULL);
+}
+static int generic_receiver(int argc, char **argv){
+    if ((sockfd > 0) && (!streaming) && (!generic_buffer)){
+        xTaskCreatePinnedToCore(task_generic_receiver, "generic_receiver_task", 8096,NULL, 6, NULL,1);
+        generic_buffer = true;
+    }else if((streaming) || (generic_buffer)){
+        ESP_LOGW(TAG,"Stream still ongoing!!");
+        return ESP_OK;
+    }else{
+        ESP_LOGE(TAG,"Socket is not open!!");
+    }
+    return ESP_OK;
+
+
+}
+
+static void register_generic_receiver(void){
+    const esp_console_cmd_t cmd = {
+        .command = "generic_recv_on",
+        .help = "turn on the receving socket",
+        .hint = NULL,
+        .func = &generic_receiver,
     };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
 }
