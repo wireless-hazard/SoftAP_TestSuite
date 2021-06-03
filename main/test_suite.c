@@ -104,7 +104,7 @@ void app_main(void){
     const char* prompt = LOG_COLOR_I "Test Suite> " LOG_RESET_COLOR;
 
     printf("\n"
-           "This is an example of ESP-IDF console component.\n"
+           ";D\n"
            "Type 'help' to get the list of commands.\n"
            "Use UP/DOWN arrows to navigate through command history.\n"
            "Press TAB when typing command name to auto-complete.\n"
