@@ -68,6 +68,7 @@ static void register_connect_socket(void);
 static void register_send_system_info(void);
 static void register_receive_stream_pckt(void);
 static void register_generic_receiver(void);
+static void register_stations_list(void);
 
 void register_testsuite(void){
 	register_startap();
@@ -79,6 +80,7 @@ void register_testsuite(void){
     register_send_system_info();
     register_receive_stream_pckt();
     register_generic_receiver();
+	register_stations_list();
 }
 
 
@@ -216,7 +218,7 @@ static int open_socket(int argc, char **argv){
     // socket create and varification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
-        ESP_LOGE(TAG,"socket creation failed...\n");
+        ESP_LOGE(TAG,"socket creation failed: %s\n",strerror(errno));
 		return ESP_OK;
     }
     else{
@@ -608,5 +610,35 @@ static void register_generic_receiver(void){
         .hint = NULL,
         .func = &generic_receiver,
     };
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
+}
+
+static int stations_list(int argc, char **argv){
+	wifi_sta_list_t list;
+	if (!soft_ap_on){
+		ESP_LOGE(TAG,"Wireless Interface off");
+		return ESP_OK;
+	}
+	ESP_ERROR_CHECK(esp_wifi_ap_get_sta_list(&list));
+	int list_iterator = list.num - 1;
+	tcpip_adapter_sta_list_t tcpip_sta_list;
+
+	tcpip_adapter_get_sta_list(&list, &tcpip_sta_list);
+	// tcpip_adapter_sta_list.sta[i].ip
+
+	for(int i = 0; i <= list_iterator; i++){
+		ESP_LOGI(TAG,"\nMAC: %2x:%2x:%2x:%2x:%2x:%2x\t\tIP:"IPSTR"\t\tRSSI:%d\n",list.sta[i].mac[0],list.sta[i].mac[1],list.sta[i].mac[2],
+			list.sta[i].mac[3],list.sta[i].mac[4],list.sta[i].mac[5],IP2STR(&tcpip_sta_list.sta[i].ip),list.sta[i].rssi);
+	}
+	return ESP_OK;
+}
+
+static void register_stations_list(void){
+	const esp_console_cmd_t cmd = {
+		.command = "list_stations",
+		.help = "list the stations associated",
+		.hint = NULL,
+		.func = &stations_list,
+	};
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
 }
