@@ -521,6 +521,98 @@ static void task_stream_pckts(void *pvParameters){
     vTaskDelete(NULL);
 }
 
+/*static void task_stream_pckts(void *pvParameters){
+    uint16_t limit_of_packets = (uint16_t)packet_stream_args.number_of_pckts->ival[0];
+    int sensor_frequency = packet_stream_args.sensor_frequency->ival[0];
+    int rounds = packet_stream_args.rounds->ival[0];
+
+    int16_t tempo_anterior = 0;
+    int16_t tempo_atual = 0;
+    unsigned long long int corrompido = 0;
+    unsigned long long int total_pacotes = 0;
+    float frequencia = 0;
+
+    char init_transmission[100] = {0,};
+    sprintf(init_transmission,"%s%d%s",init_transmissionBEGIN,sensor_frequency,init_transmissionEND);
+    uint8_t packet[150*sizeof(battery_packet)];
+    battery_packet data[150] = {0,};
+
+    int err;
+
+    float media_freq = 0;
+    
+    for(int j = 0; j < rounds;j++){
+
+        tempo_atual = 0;
+        tempo_anterior = 0;
+        corrompido = 0;
+        total_pacotes = 0;
+        frequencia = 0;
+        media_freq = 0;
+
+        err = send(sockfd,&init_transmission,sizeof(init_transmission),0);//MSG_DONTWAIT);
+        if (err < 0){
+            ESP_LOGE(TAG,"NAO ENVIADO\n");
+        }
+        for(int i = 0; i < limit_of_packets;i++){
+        
+            total_pacotes++;
+            if(!streaming){
+                ESP_LOGI(TAG,"(%d/%d)Frequencia Media(%lld pacotes) = %f Hz (esperado: %dHz)\n",j+1,rounds,total_pacotes,media_freq/total_pacotes,sensor_frequency);
+                ESP_LOGW(TAG,"Number of corrupted packets: %llu\n",corrompido);
+                vTaskDelete(NULL);
+            }
+            err = recv(sockfd,packet,sizeof(packet),0);
+            if (err < 0){
+                ESP_LOGE(TAG,"error no socket\n");
+                break;
+            }
+
+
+
+            memcpy(&data.ID0,packet,sizeof(uint8_t));
+            memcpy(&data.IDfinal,packet+23,sizeof(uint8_t));
+        
+            if ((data.ID0 != 0) || (data.IDfinal != 255)){
+                corrompido++;
+                continue;
+            }
+            memcpy(&data.time,packet+1,sizeof(data.time));
+            memcpy(&data.accelX,packet+9,sizeof(data.accelX));
+            memcpy(&data.accelY,packet+11,sizeof(data.accelY));
+            memcpy(&data.accelZ,packet+13,sizeof(data.accelZ));
+            memcpy(&data.gyroX,packet+15,sizeof(data.gyroX));
+            memcpy(&data.gyroY,packet+17,sizeof(data.gyroY));
+            memcpy(&data.gyroZ,packet+19,sizeof(data.gyroZ));
+            memcpy(&data.battery,packet+21,sizeof(uint16_t));
+        
+
+            tempo_atual = data.time - tempo_anterior;
+            frequencia = (1/(float)tempo_atual)*pow(10,6);
+
+            if ((frequencia<=0) || (frequencia>4100)){
+                corrompido++;
+                tempo_anterior = data.time;
+                continue;    
+            }
+
+            tempo_anterior = data.time;
+
+            media_freq += frequencia;
+        }
+        ESP_LOGI(TAG,"(%d/%d)Frequencia Media(%lld pacotes) = %f Hz (esperado: %dHz)\n",j+1,rounds,total_pacotes,media_freq/total_pacotes,sensor_frequency);
+        ESP_LOGW(TAG,"Number of corrupted packets: %llu\n",corrompido);
+        err = send(sockfd,&stop_transmission,sizeof(stop_transmission),0);//MSG_DONTWAIT);
+        if (err < 0){ 
+            ESP_LOGE(TAG,"NAO ENVIADO\n");
+        }
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+    }
+    streaming = false;
+    vTaskDelete(NULL);
+}*/
+
+
 static int receive_stream_pckt(int argc, char **argv){
     if ((sockfd > 0) && (!streaming) && (!generic_buffer)){
         int nerrors = arg_parse(argc, argv, (void **) &packet_stream_args);
