@@ -69,6 +69,7 @@ static void register_send_system_info(void);
 static void register_receive_stream_pckt(void);
 static void register_generic_receiver(void);
 static void register_stations_list(void);
+static void register_print_packets(void);
 
 void register_testsuite(void){
 	register_startap();
@@ -81,6 +82,7 @@ void register_testsuite(void){
     register_receive_stream_pckt();
     register_generic_receiver();
 	register_stations_list();
+    register_print_packets();
 }
 
 
@@ -433,7 +435,7 @@ static struct {
     struct arg_end *end;
 } packet_stream_args;
 
-static void task_stream_pckts(void *pvParameters){
+/*static void task_stream_pckts(void *pvParameters){
     uint16_t limit_of_packets = (uint16_t)packet_stream_args.number_of_pckts->ival[0];
     int sensor_frequency = packet_stream_args.sensor_frequency->ival[0];
     int rounds = packet_stream_args.rounds->ival[0];
@@ -519,9 +521,11 @@ static void task_stream_pckts(void *pvParameters){
     }
     streaming = false;
     vTaskDelete(NULL);
-}
+}*/
 
-/*static void task_stream_pckts(void *pvParameters){
+static battery_packet last_iteration[150] = {0,};
+
+static void task_stream_pckts(void *pvParameters){
     uint16_t limit_of_packets = (uint16_t)packet_stream_args.number_of_pckts->ival[0];
     int sensor_frequency = packet_stream_args.sensor_frequency->ival[0];
     int rounds = packet_stream_args.rounds->ival[0];
@@ -534,7 +538,7 @@ static void task_stream_pckts(void *pvParameters){
 
     char init_transmission[100] = {0,};
     sprintf(init_transmission,"%s%d%s",init_transmissionBEGIN,sensor_frequency,init_transmissionEND);
-    uint8_t packet[150*sizeof(battery_packet)];
+    uint8_t packet[75*sizeof(battery_packet)];
     battery_packet data[150] = {0,};
 
     int err;
@@ -554,63 +558,50 @@ static void task_stream_pckts(void *pvParameters){
         if (err < 0){
             ESP_LOGE(TAG,"NAO ENVIADO\n");
         }
-        for(int i = 0; i < limit_of_packets;i++){
+        for(int i = 0; i < limit_of_packets;i = i + 150){
         
-            total_pacotes++;
+            total_pacotes += 150;
             if(!streaming){
                 ESP_LOGI(TAG,"(%d/%d)Frequencia Media(%lld pacotes) = %f Hz (esperado: %dHz)\n",j+1,rounds,total_pacotes,media_freq/total_pacotes,sensor_frequency);
                 ESP_LOGW(TAG,"Number of corrupted packets: %llu\n",corrompido);
                 vTaskDelete(NULL);
             }
-            err = recv(sockfd,packet,sizeof(packet),0);
+            for(int metade = 0; metade <=75; metade = metade + 75){
+                err = recv(sockfd,packet,sizeof(packet),0);
+                memcpy(data+metade,packet,sizeof(packet));
+            }
             if (err < 0){
                 ESP_LOGE(TAG,"error no socket\n");
                 break;
             }
 
+            for (int k = 0; k < (sizeof(data)/sizeof(battery_packet)); k++){
+                
+                // ESP_LOGI(TAG,"time[%d] %lld",k,data[k].time);
 
+                if ((data[k].ID0 != 0) || (data[k].IDfinal != 255)){
+                    corrompido++;
+                    continue;
+                }
 
-            memcpy(&data.ID0,packet,sizeof(uint8_t));
-            memcpy(&data.IDfinal,packet+23,sizeof(uint8_t));
-        
-            if ((data.ID0 != 0) || (data.IDfinal != 255)){
-                corrompido++;
-                continue;
+                tempo_atual = data[k].time - tempo_anterior;
+                frequencia = (1/(float)tempo_atual)*pow(10,6);
+                tempo_anterior = data[k].time;
+                media_freq += frequencia;
             }
-            memcpy(&data.time,packet+1,sizeof(data.time));
-            memcpy(&data.accelX,packet+9,sizeof(data.accelX));
-            memcpy(&data.accelY,packet+11,sizeof(data.accelY));
-            memcpy(&data.accelZ,packet+13,sizeof(data.accelZ));
-            memcpy(&data.gyroX,packet+15,sizeof(data.gyroX));
-            memcpy(&data.gyroY,packet+17,sizeof(data.gyroY));
-            memcpy(&data.gyroZ,packet+19,sizeof(data.gyroZ));
-            memcpy(&data.battery,packet+21,sizeof(uint16_t));
-        
-
-            tempo_atual = data.time - tempo_anterior;
-            frequencia = (1/(float)tempo_atual)*pow(10,6);
-
-            if ((frequencia<=0) || (frequencia>4100)){
-                corrompido++;
-                tempo_anterior = data.time;
-                continue;    
-            }
-
-            tempo_anterior = data.time;
-
-            media_freq += frequencia;
         }
-        ESP_LOGI(TAG,"(%d/%d)Frequencia Media(%lld pacotes) = %f Hz (esperado: %dHz)\n",j+1,rounds,total_pacotes,media_freq/total_pacotes,sensor_frequency);
-        ESP_LOGW(TAG,"Number of corrupted packets: %llu\n",corrompido);
         err = send(sockfd,&stop_transmission,sizeof(stop_transmission),0);//MSG_DONTWAIT);
         if (err < 0){ 
             ESP_LOGE(TAG,"NAO ENVIADO\n");
         }
+        ESP_LOGI(TAG,"(%d/%d)Frequencia Media(%lld pacotes) = %f Hz (esperado: %dHz)\n",j+1,rounds,total_pacotes,media_freq/total_pacotes,sensor_frequency);
+        ESP_LOGW(TAG,"Number of corrupted packets: %llu\n",corrompido);
         vTaskDelay(1000/portTICK_PERIOD_MS);
     }
+    memcpy(last_iteration,data,sizeof(data));
     streaming = false;
     vTaskDelete(NULL);
-}*/
+}
 
 
 static int receive_stream_pckt(int argc, char **argv){
@@ -633,8 +624,8 @@ static int receive_stream_pckt(int argc, char **argv){
             ESP_LOGE(TAG,"\"%d\" is an Invalid number of rounds!!",packet_stream_args.rounds->ival[0]);
             return ESP_OK;
         }
-        ESP_LOGI(TAG,"Starting receiving stream of packets");
-        xTaskCreatePinnedToCore(task_stream_pckts, "socket_streaming_recv", 8096,NULL, 6, NULL,1);
+        ESP_LOGI(TAG,"Starting receiving stream of packets\n");
+        xTaskCreatePinnedToCore(task_stream_pckts, "socket_streaming_recv", 10240,NULL, 6, NULL,1);
         streaming = true;
         return ESP_OK;
     }
@@ -732,5 +723,31 @@ static void register_stations_list(void){
 		.hint = NULL,
 		.func = &stations_list,
 	};
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
+}
+
+static int print_packets(int argc, char **argv){
+    if ((streaming) || (generic_buffer)){
+        ESP_LOGE(TAG,"Can't print while the trasmission is on");
+        return ESP_OK;
+    }
+
+/*  uint16_t battery;
+    uint8_t IDfinal;*/
+    for(int i = 0; i < 150; i++){
+        ESP_LOGI(TAG,"{\n\n\tID0: %d, time: %lld, accelX: %d, accelY: %d, accelZ: %d, gyroX: %d, gyroY: %d, gyroZ: %d, battery: %u, IDfinal: %d\n",
+            last_iteration[i].ID0,last_iteration[i].time,last_iteration[i].accelX,last_iteration[i].accelY,last_iteration[i].accelZ,
+            last_iteration[i].gyroX,last_iteration[i].gyroY,last_iteration[i].gyroZ,last_iteration[i].battery,last_iteration[i].IDfinal);
+    }
+    return ESP_OK;
+}
+
+static void register_print_packets(void){
+    const esp_console_cmd_t cmd = {
+        .command = "print_packets",
+        .help = "print all 150 last received packets",
+        .hint = NULL,
+        .func = &print_packets,
+    };
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd));
 }
